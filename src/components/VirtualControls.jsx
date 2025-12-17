@@ -16,70 +16,78 @@ export const VirtualControls = () => {
     }, [])
 
     const triggerKey = (key, type) => {
-        const event = new KeyboardEvent(type, { key, bubbles: true })
+        // Dispatch detailed event for maximum compatibility
+        const event = new KeyboardEvent(type, {
+            key: key,
+            code: key,
+            keyCode: key === 'ArrowUp' ? 38 : key === 'ArrowDown' ? 40 : key === 'ArrowLeft' ? 37 : 39,
+            bubbles: true,
+            cancelable: true
+        })
         window.dispatchEvent(event)
     }
 
-    const handleTouchStart = (key) => (e) => {
-        e.preventDefault() // Prevent scroll/zoom
+    const handlePointerDown = (key) => (e) => {
+        e.preventDefault()
+        e.stopPropagation() // Stop event bubbling
         triggerKey(key, 'keydown')
     }
 
-    const handleTouchEnd = (key) => (e) => {
+    const handlePointerUp = (key) => (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        triggerKey(key, 'keyup')
+    }
+
+    const handlePointerLeave = (key) => (e) => {
+        // Safety: if you drag finger off button, stop the action
         e.preventDefault()
         triggerKey(key, 'keyup')
     }
 
-    // Force show for now as per "Mobile Support" requirement to ensure it works
-    // We can hide it on large screens via CSS hidden md:hidden
-
     return (
-        <div className="absolute bottom-8 left-0 right-0 px-4 pb-4 flex justify-between items-end pointer-events-auto z-50 select-none">
-            {/* Left/Right Controls */}
-            <div className={`flex gap-4 ${isTouch ? '' : 'md:hidden'}`}>
+        <div className="absolute bottom-8 left-0 right-0 px-8 pb-8 flex justify-between items-end pointer-events-auto z-50 select-none">
+            {/* Left Side: Gas & Brake (Left Thumb) */}
+            <div className="flex gap-6 items-end">
                 <button
-                    className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full border-2 border-white/30 active:bg-white/40 active:scale-95 transition-all flex items-center justify-center"
-                    onTouchStart={handleTouchStart('ArrowLeft')}
-                    onTouchEnd={handleTouchEnd('ArrowLeft')}
-                    onMouseDown={handleTouchStart('ArrowLeft')} // For testing on desktop
-                    onMouseUp={handleTouchEnd('ArrowLeft')}
+                    className="w-24 h-24 bg-gray-300/80 backdrop-blur-md rounded-2xl border-4 border-gray-400 active:bg-gray-400 active:scale-95 transition-all flex flex-col items-center justify-center shadow-xl touch-none"
+                    onPointerDown={handlePointerDown('ArrowDown')}
+                    onPointerUp={handlePointerUp('ArrowDown')}
+                    onPointerLeave={handlePointerLeave('ArrowDown')}
                 >
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <span className="font-black text-gray-800 text-lg uppercase tracking-wider">Brake</span>
+                </button>
+                <button
+                    className="w-28 h-28 bg-gray-200/90 backdrop-blur-md rounded-2xl border-4 border-gray-400 active:bg-gray-400 active:scale-95 transition-all flex flex-col items-center justify-center shadow-xl touch-none"
+                    onPointerDown={handlePointerDown('ArrowUp')}
+                    onPointerUp={handlePointerUp('ArrowUp')}
+                    onPointerLeave={handlePointerLeave('ArrowUp')}
+                >
+                    <span className="font-black text-gray-800 text-xl uppercase tracking-wider">GAS</span>
+                </button>
+            </div>
+
+            {/* Right Side: Steering (Right Thumb) */}
+            <div className="flex gap-6 items-end">
+                <button
+                    className="w-24 h-24 bg-gray-300/80 backdrop-blur-md rounded-full border-4 border-gray-400 active:bg-gray-400 active:scale-95 transition-all flex items-center justify-center shadow-xl touch-none"
+                    onPointerDown={handlePointerDown('ArrowLeft')}
+                    onPointerUp={handlePointerUp('ArrowLeft')}
+                    onPointerLeave={handlePointerLeave('ArrowLeft')}
+                >
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1f2937" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M15 18l-6-6 6-6" />
                     </svg>
                 </button>
                 <button
-                    className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full border-2 border-white/30 active:bg-white/40 active:scale-95 transition-all flex items-center justify-center"
-                    onTouchStart={handleTouchStart('ArrowRight')}
-                    onTouchEnd={handleTouchEnd('ArrowRight')}
-                    onMouseDown={handleTouchStart('ArrowRight')}
-                    onMouseUp={handleTouchEnd('ArrowRight')}
+                    className="w-24 h-24 bg-gray-300/80 backdrop-blur-md rounded-full border-4 border-gray-400 active:bg-gray-400 active:scale-95 transition-all flex items-center justify-center shadow-xl touch-none"
+                    onPointerDown={handlePointerDown('ArrowRight')}
+                    onPointerUp={handlePointerUp('ArrowRight')}
+                    onPointerLeave={handlePointerLeave('ArrowRight')}
                 >
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1f2937" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9 18l6-6-6-6" />
                     </svg>
-                </button>
-            </div>
-
-            {/* Brake/Gas Control */}
-            <div className="flex gap-4">
-                <button
-                    className="w-16 h-16 bg-red-500/30 backdrop-blur-md rounded-full border-2 border-red-400 active:bg-red-500/60 active:scale-95 transition-all flex items-center justify-center"
-                    onTouchStart={handleTouchStart('ArrowDown')}
-                    onTouchEnd={handleTouchEnd('ArrowDown')}
-                    onMouseDown={handleTouchStart('ArrowDown')}
-                    onMouseUp={handleTouchEnd('ArrowDown')}
-                >
-                    <span className="font-bold text-white text-xs uppercase">Brake</span>
-                </button>
-                <button
-                    className="w-24 h-24 bg-green-500/30 backdrop-blur-md rounded-full border-2 border-green-400 active:bg-green-500/60 active:scale-95 transition-all flex items-center justify-center"
-                    onTouchStart={handleTouchStart('ArrowUp')}
-                    onTouchEnd={handleTouchEnd('ArrowUp')}
-                    onMouseDown={handleTouchStart('ArrowUp')}
-                    onMouseUp={handleTouchEnd('ArrowUp')}
-                >
-                    <span className="font-bold text-white text-sm uppercase">GAS</span>
                 </button>
             </div>
         </div>
