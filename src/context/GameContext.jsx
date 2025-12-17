@@ -5,17 +5,23 @@ const GameContext = createContext()
 export const GameProvider = ({ children }) => {
     const [status, setStatus] = useState('menu') // menu, playing, gameover
     const [score, setScore] = useState(0)
+    const [highScore, setHighScore] = useState(() => {
+        const saved = localStorage.getItem('turboRacerHigh')
+        return saved ? parseInt(saved, 10) : 0
+    })
     const [time, setTime] = useState(60)
+    const [initialTime, setInitialTime] = useState(300) // Default 5 mins (300s)
     const [dayNight, setDayNight] = useState('day') // day, night
     const [speed, setSpeed] = useState(0)
 
     // Use refs for values that change every frame to avoid re-renders if needed in loop
     const scoreRef = useRef(0)
 
-    const startGame = () => {
+    const startGame = (duration = 300) => {
         setScore(0)
         scoreRef.current = 0
-        setTime(60)
+        setInitialTime(duration)
+        setTime(duration)
         setSpeed(0) // Start at 0, manual control
         setStatus('playing')
     }
@@ -23,6 +29,10 @@ export const GameProvider = ({ children }) => {
     const endGame = () => {
         setStatus('gameover')
         setSpeed(0)
+        if (score > highScore) {
+            setHighScore(score)
+            localStorage.setItem('turboRacerHigh', score)
+        }
     }
 
     const toggleDayNight = () => {
@@ -53,7 +63,9 @@ export const GameProvider = ({ children }) => {
         <GameContext.Provider value={{
             status, setStatus,
             score, setScore,
+            highScore,
             time, setTime,
+            initialTime,
             dayNight, toggleDayNight,
             speed, setSpeed,
             startGame, endGame,

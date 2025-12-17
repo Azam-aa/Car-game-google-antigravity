@@ -5,9 +5,10 @@ import * as THREE from 'three'
 
 export const PlayerCar = () => {
     const carRef = useRef()
-    const { status, speed, playerRef, setSpeed } = useGame() // We need setSpeed to update global speed
+    const { status, speed: contextSpeed, playerRef, setSpeed } = useGame()
 
-    // Controls State
+    // Physics State in Ref (to avoid re-renders)
+    const speedRef = useRef(0)
     const keys = useRef({ left: false, right: false, up: false, down: false })
 
     useEffect(() => {
@@ -25,52 +26,84 @@ export const PlayerCar = () => {
         }
         window.addEventListener('keydown', handleKeyDown)
         window.addEventListener('keyup', handleKeyUp)
+
+        // Reset speed on mount/status change
+        if (status === 'playing') {
+            // Keep existing speed if restarting? No, reset ensures clean start.
+            // But if we pause, we might want to keep it.
+            // For now start fresh.
+        } else {
+            speedRef.current = 0
+            setSpeed(0)
+        }
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown)
             window.removeEventListener('keyup', handleKeyUp)
         }
-    }, [])
+    }, [status, setSpeed])
 
     useFrame((state, delta) => {
         if (status !== 'playing' || !carRef.current) return
 
-        // Manual Speed Control
-        let currentSpeed = speed
+        // PHYSICS UPDATE
+        let currentSpeed = speedRef.current
+
+        // Acceleration / Braking
         if (keys.current.up) {
-            currentSpeed += 20 * delta // Accelerate
+            currentSpeed += 40 * delta // Faster acceleration
         } else {
-            currentSpeed -= 10 * delta // Friction
+            // Natural Friction
+            currentSpeed -= 15 * delta
         }
 
         if (keys.current.down) {
-            currentSpeed -= 30 * delta // Brake
+            currentSpeed -= 60 * delta // Strong braking
         }
 
-        // Clamp speed
-        currentSpeed = THREE.MathUtils.clamp(currentSpeed, 0, 100)
+        // Clamp Speed
+        if (currentSpeed < 0) currentSpeed = 0
+        if (currentSpeed > 100) currentSpeed = 100 // Max speed
 
-        // Update global speed for other components
-        setSpeed(currentSpeed)
+        // Update Ref
+        speedRef.current = currentSpeed
 
+        // Update Context (Throttled or just direct if React handles it well, 
+        // using Math.round to reduce updates can help)
+        if (Math.abs(currentSpeed - contextSpeed) > 1) {
+            setSpeed(Math.round(currentSpeed))
+        }
+
+        // Move Car Forward (Z axis negative)
+        // distance = speed * time
         carRef.current.position.z -= currentSpeed * delta
 
         // Horizontal Movement
-        const moveSpeed = 15 * delta
+        const moveSpeed = 20 * delta
+        // Only steer if moving (realistic) or allow steer always? 
+        // Arcade games often allow steer even when stopped, but let's make it slightly dependent on speed for realism? 
+        // User asked for "smooth and natural".
+        // Let's keep it simple: constant steer speed but smooth lean.
+
+        let targetRotY = 0
+        let targetRotZ = 0
+
         if (keys.current.left) {
             carRef.current.position.x -= moveSpeed
-            carRef.current.rotation.y = THREE.MathUtils.lerp(carRef.current.rotation.y, 0.3, 0.1)
-            carRef.current.rotation.z = THREE.MathUtils.lerp(carRef.current.rotation.z, 0.1, 0.1)
+            targetRotY = 0.3
+            targetRotZ = 0.1
         } else if (keys.current.right) {
             carRef.current.position.x += moveSpeed
-            carRef.current.rotation.y = THREE.MathUtils.lerp(carRef.current.rotation.y, -0.3, 0.1)
-            carRef.current.rotation.z = THREE.MathUtils.lerp(carRef.current.rotation.z, -0.1, 0.1)
-        } else {
-            carRef.current.rotation.y = THREE.MathUtils.lerp(carRef.current.rotation.y, 0, 0.1)
-            carRef.current.rotation.z = THREE.MathUtils.lerp(carRef.current.rotation.z, 0, 0.1)
+            targetRotY = -0.3
+            targetRotZ = -0.1
         }
 
-        // Constraints (Road Width approx 10 units wide, -5 to 5)
-        carRef.current.position.x = THREE.MathUtils.clamp(carRef.current.position.x, -4.5, 4.5)
+        // Smooth rotation
+        carRef.current.rotation.y = THREE.MathUtils.lerp(carRef.current.rotation.y, targetRotY, 5 * delta)
+        carRef.current.rotation.z = THREE.MathUtils.lerp(carRef.current.rotation.z, targetRotZ, 5 * delta)
+
+        // Constraints (Road Width approx 12 units wide usually, -6 to 6, safe -5 to 5)
+        carRef.current.position.x = THREE.MathUtils.clamp(carRef.current.position.x, -5, 5)
 
         // SYNC WITH CONTEXT FOR COLLISION
         if (playerRef.current) {
@@ -80,11 +113,18 @@ export const PlayerCar = () => {
 
         // Camera Follow
         state.camera.position.z = carRef.current.position.z + 10
-        state.camera.position.y = 5 // Keep height fixed or slight bob
-        state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, carRef.current.position.x / 2, 0.1)
+        // Dynamic camera height based on speed?
+        state.camera.position.y = 5 + (currentSpeed / 100) * 0.5
 
-        // Look slightly further ahead
-        state.camera.lookAt(carRef.current.position.x, 0, carRef.current.position.z - 10)
+        // Smooth camera X follow (delayed)
+        state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, carRef.current.position.x / 1.5, 3 * delta)
+
+        // Look slightly further ahead based on speed
+        state.camera.lookAt(
+            carRef.current.position.x / 2,
+            0,
+            carRef.current.position.z - 10 - (currentSpeed * 0.1)
+        )
     })
 
     return (
@@ -151,3 +191,4 @@ export const PlayerCar = () => {
         </group>
     )
 }
+
