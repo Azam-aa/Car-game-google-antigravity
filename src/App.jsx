@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { GameProvider, useGame } from './context/GameContext'
 import { Scene } from './components/Scene'
 import { UI } from './components/UI'
+import { BackgroundMusic } from './components/BackgroundMusic'
 
 const GameCanvas = () => {
   return (
@@ -26,6 +27,7 @@ const AppWrapper = () => {
         <GameCanvas />
       </div>
       <UI />
+      <BackgroundMusic />
     </div>
   )
 }
